@@ -63,7 +63,11 @@ tr:hover{background:#f5f3ff}
 .setup-step a{color:#667eea}
 .api-input{width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-size:.9em;margin-top:6px;font-family:monospace}
 .api-input:focus{outline:none;border-color:#667eea}
-@media print{.btn,.bg,.sbox,.tabs{display:none!important}.card{box-shadow:none;border:1px solid #ddd}}
+.share-highlight{background:linear-gradient(135deg,#11998e,#38ef7d);border-radius:12px;padding:16px;margin-top:12px;color:#fff;text-align:center}
+.share-highlight h3{font-size:1.1em;margin-bottom:8px}
+.share-highlight .link-box{background:rgba(255,255,255,.95);color:#333;border-radius:8px;padding:10px;font-size:.82em;word-break:break-all;text-align:left;margin:8px 0}
+.share-highlight .copy-btn{background:#fff;color:#11998e;border:none;padding:8px 20px;border-radius:8px;font-size:.9em;font-weight:600;cursor:pointer}
+@media print{.btn,.bg,.sbox,.tabs,.share-highlight{display:none!important}.card{box-shadow:none;border:1px solid #ddd}}
 @media(max-width:600px){.row{flex-direction:column}.col{min-width:100%}}
 </style>
 </head>
@@ -75,10 +79,11 @@ tr:hover{background:#f5f3ff}
 <div class="card"><div class="loading"><div class="spinner"></div><p>加载中...</p></div></div>
 </div>
 
+<!-- 页面1: 组织者设置API Key -->
 <div id="pgSetup">
 <div class="card">
 <h2 style="color:#333;margin-bottom:12px">⚙️ 组织者首次设置</h2>
-<div class="warn">本工具使用 jsonbin.io 免费云存储共享数据。组织者只需设置一次 API Key，参与者无需任何设置。</div>
+<div class="warn">本工具使用 jsonbin.io 免费云存储。组织者只需设置一次，参与者无需任何设置即可直接填写！</div>
 <div class="setup-step">
 <h3>第1步：注册 jsonbin.io（免费）</h3>
 <p>打开 <a href="https://jsonbin.io" target="_blank">https://jsonbin.io</a>，点击 "Sign Up" 注册（可用 GitHub 登录）。</p>
@@ -97,6 +102,7 @@ tr:hover{background:#f5f3ff}
 </div>
 </div>
 
+<!-- 页面2: 创建活动 -->
 <div id="pgCreate" style="display:none">
 <div class="card">
 <h2 style="color:#333;margin-bottom:12px">📝 创建参访活动</h2>
@@ -118,19 +124,48 @@ tr:hover{background:#f5f3ff}
 </div>
 </div>
 
+<!-- 页面3: 活动页面（填写+统计） -->
 <div id="pgEvent" style="display:none">
 <div class="card">
 <div class="ibox" id="eInfo"></div>
 <div class="tabs">
-<button class="tab on" id="tabStats" onclick="switchTab('stats')">📊 统计</button>
-<button class="tab" id="tabFill" onclick="switchTab('fill')">✍️ 填写</button>
+<button class="tab on" id="tabFill" onclick="switchTab('fill')">✍️ 填写报名</button>
+<button class="tab" id="tabStats" onclick="switchTab('stats')">📊 统计查看</button>
 </div>
 </div>
 
-<div id="pgStats">
+<!-- 填写区域 -->
+<div id="pgFill">
+<div class="card" id="fillForm">
+<h2 style="color:#333;margin-bottom:10px;font-size:1em">✍️ 填写参访信息</h2>
+<div class="row">
+<div class="col"><label>姓名</label><input type="text" id="fName" placeholder="你的姓名"></div>
+<div class="col"><label>人数（含本人）</label><input type="number" id="fCnt" min="1" value="1" style="width:80px"></div>
+<div class="col"><label>车牌号</label><input type="text" id="fPlate" placeholder="选填"></div>
+</div>
+<div id="fChecks" class="checks"></div>
+<div class="bg"><button class="btn bs" id="btnSubmit" onclick="doSubmit()">✅ 提交</button></div>
+</div>
+<div id="fillOk" style="display:none">
+<div class="card"><div class="ok">✅ 提交成功！你可以切换到"📊 统计查看"标签查看最新数据。</div></div>
+</div>
+
+<!-- 分享链接（仅组织者看到） -->
+<div id="shareBox" style="display:none">
+<div class="share-highlight">
+<h3>📤 分享此链接给同学</h3>
+<p>同学打开后直接填写，无需任何设置！</p>
+<div class="link-box" id="shareLinkText"></div>
+<button class="copy-btn" onclick="doCopy()">📋 复制链接</button>
+</div>
+</div>
+</div>
+
+<!-- 统计区域 -->
+<div id="pgStats" style="display:none">
 <div class="card">
 <div class="bg" style="margin-top:0;margin-bottom:8px">
-<button class="btn bp bsm" onclick="refreshData()">🔄 刷新</button>
+<button class="btn bp bsm" onclick="refreshData()">🔄 刷新数据</button>
 <button class="btn bp bsm" onclick="window.print()">🖨️ 打印</button>
 <button class="btn bw bsm" onclick="doExport()">📤 导出CSV</button>
 </div>
@@ -150,31 +185,6 @@ tr:hover{background:#f5f3ff}
 <div id="tE" class="empty">暂无数据</div>
 </div>
 </div>
-
-<div id="pgFill" style="display:none">
-<div class="card" id="fillForm">
-<h2 style="color:#333;margin-bottom:10px;font-size:1em">✍️ 填写参访信息</h2>
-<div class="row">
-<div class="col"><label>姓名</label><input type="text" id="fName" placeholder="你的姓名"></div>
-<div class="col"><label>人数（含本人）</label><input type="number" id="fCnt" min="1" value="1" style="width:80px"></div>
-<div class="col"><label>车牌号</label><input type="text" id="fPlate" placeholder="选填"></div>
-</div>
-<div id="fChecks" class="checks"></div>
-<div class="bg"><button class="btn bs" id="btnSubmit" onclick="doSubmit()">✅ 提交</button></div>
-</div>
-<div id="fillOk" style="display:none">
-<div class="card"><div class="ok">✅ 提交成功！你可以切换到"📊 统计"标签查看最新数据。</div></div>
-</div>
-</div>
-
-<div class="card">
-<div class="sbox">
-<b>📤 分享此链接给同学，大家填写后你直接刷新就能看到：</b>
-<textarea id="shareLink" class="larea" rows="2" readonly></textarea>
-<div class="bg"><button class="btn bs bsm" onclick="doCopy()">📋 复制链接</button></div>
-<div class="h">同学打开链接 → 填写信息 → 提交 → 你点"🔄 刷新"即可看到最新统计</div>
-</div>
-</div>
 </div>
 </div>
 
@@ -183,21 +193,32 @@ var API_BASE = 'https://api.jsonbin.io/v3';
 var D = null;
 var binId = null;
 var apiKey = null;
+var isOwner = false;
 var myActs = [];
 
-// Use query params (?e=binId&k=apiKey) instead of hash (#)
-// because WeChat/QQ strip # fragments from shared URLs
+// Base64 helpers for safe URL encoding of API key
+function b64Encode(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+}
+function b64Decode(str) {
+    return decodeURIComponent(escape(atob(str)));
+}
+
+// URL: ?e=base64(binId)&k=base64(apiKey)
+// Using base64 to avoid special character issues ($, /, + in API keys)
 function getUrlParams() {
     var params = new URLSearchParams(location.search);
+    var e = params.get('e');
+    var k = params.get('k');
     return {
-        e: params.get('e'),  // event bin ID
-        k: params.get('k')   // API key
+        e: e ? b64Decode(e) : null,
+        k: k ? b64Decode(k) : null
     };
 }
 
 function makeShareUrl(bid, key) {
     var base = location.href.split('?')[0].split('#')[0];
-    return base + '?e=' + encodeURIComponent(bid) + '&k=' + encodeURIComponent(key);
+    return base + '?e=' + b64Encode(bid) + '&k=' + b64Encode(key);
 }
 
 // ---- Page switching ----
@@ -277,8 +298,8 @@ function doCreate() {
         return res.json();
     }).then(function(r) {
         binId = r.metadata.id;
+        isOwner = true;
         localStorage.setItem('cvs_owner_' + binId, '1');
-        // Update URL with query params
         history.replaceState(null, '', makeShareUrl(binId, apiKey));
         showEventPage();
         btn.disabled = false; btn.textContent = '🚀 创建活动';
@@ -291,9 +312,7 @@ function doCreate() {
 // ---- Load event data ----
 function loadData(cb) {
     if (!binId) { showPg(apiKey ? 1 : 0); return; }
-    document.getElementById('pgLoad').style.display = 'block';
-    document.getElementById('pgCreate').style.display = 'none';
-    document.getElementById('pgEvent').style.display = 'none';
+    showPg(-1); // show loading
     var headers = {};
     if (apiKey) headers['X-Master-Key'] = apiKey;
     fetch(API_BASE + '/b/' + binId + '/latest', { headers: headers }).then(function(res) {
@@ -320,33 +339,37 @@ function refreshData() {
     }).then(function(r) {
         D = r.record || r;
         renderAll();
-        b.textContent = '🔄 刷新'; b.disabled = false;
+        b.textContent = '🔄 刷新数据'; b.disabled = false;
     }).catch(function(e) {
         alert('刷新失败：' + e.message);
-        b.textContent = '🔄 刷新'; b.disabled = false;
+        b.textContent = '🔄 刷新数据'; b.disabled = false;
     });
 }
 
 // ---- Show event page ----
 function showEventPage() {
-    showPg(2); renderEventInfo(); renderAll();
-    // Owner defaults to stats tab, participants default to fill tab
-    if (localStorage.getItem('cvs_owner_' + binId)) switchTab('stats'); else switchTab('fill');
+    showPg(2);
+    renderEventInfo();
+    renderAll();
+    // Show share link only for owner
+    document.getElementById('shareBox').style.display = isOwner ? 'block' : 'none';
+    // Default tab: owner→stats, participant→fill
+    switchTab(isOwner ? 'stats' : 'fill');
 }
 
 function renderEventInfo() {
     if (!D) return;
     var h = '<p><b>📅 日期：</b>' + D.d + '</p><p><b>📌 标题：</b>' + D.t + '</p><p><b>📝 内容：</b>' + (D.c || '无') + '</p><p><b>🎯 活动项目：</b>' + (D.a || []).join('、') + '</p>';
     document.getElementById('eInfo').innerHTML = h;
-    document.getElementById('shareLink').value = makeShareUrl(binId, apiKey);
+    document.getElementById('shareLinkText').textContent = makeShareUrl(binId, apiKey);
 }
 
 // ---- Tab switching ----
 function switchTab(tab) {
-    document.getElementById('tabStats').className = tab === 'stats' ? 'tab on' : 'tab';
     document.getElementById('tabFill').className = tab === 'fill' ? 'tab on' : 'tab';
-    document.getElementById('pgStats').style.display = tab === 'stats' ? 'block' : 'none';
+    document.getElementById('tabStats').className = tab === 'stats' ? 'tab on' : 'tab';
     document.getElementById('pgFill').style.display = tab === 'fill' ? 'block' : 'none';
+    document.getElementById('pgStats').style.display = tab === 'stats' ? 'block' : 'none';
     if (tab === 'stats') renderAll();
     if (tab === 'fill') setupFillForm();
 }
@@ -364,18 +387,20 @@ function setupFillForm() {
 
 // ---- Submit ----
 function doSubmit() {
-    if (!D || !binId || !apiKey) return;
+    if (!D || !binId || !apiKey) { alert('系统错误，请刷新页面重试'); return; }
     var name = document.getElementById('fName').value.trim();
     var count = parseInt(document.getElementById('fCnt').value) || 1;
     var plate = document.getElementById('fPlate').value.trim();
     if (!name) { alert('请输入姓名！'); return; }
     var btn = document.getElementById('btnSubmit');
     btn.disabled = true; btn.textContent = '⏳ 提交中...';
+    // Get latest data first to avoid overwriting
     fetch(API_BASE + '/b/' + binId + '/latest', { headers: { 'X-Master-Key': apiKey } }).then(function(res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
     }).then(function(r) {
         D = r.record || r;
+        // Check duplicate name
         for (var i = 0; i < D.s.length; i++) {
             if (D.s[i].n === name) {
                 if (!confirm('"' + name + '" 已登记，是否覆盖？')) { btn.disabled = false; btn.textContent = '✅ 提交'; return Promise.reject('cancel'); }
@@ -421,7 +446,7 @@ function renderAll() {
         ag.innerHTML = sh + '</div>';
     } else ag.innerHTML = '';
     var ad = document.getElementById('actDet');
-    if (!tp) { ad.innerHTML = '<div class="empty">暂无提交，切换到"✍️ 填写"标签填写信息</div>'; }
+    if (!tp) { ad.innerHTML = '<div class="empty">暂无提交</div>'; }
     else {
         var h = '';
         for (var ai = 0; ai < actList.length; ai++) {
@@ -463,8 +488,14 @@ function renderAll() {
 }
 
 function doCopy() {
-    var el = document.getElementById('shareLink'); el.select();
-    try { document.execCommand('copy'); alert('✅ 链接已复制！发到班级群即可。'); } catch (e) { alert('请手动复制'); }
+    var text = document.getElementById('shareLinkText').textContent;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() { alert('✅ 链接已复制！发到班级群即可。'); });
+    } else {
+        var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); alert('✅ 链接已复制！发到班级群即可。'); } catch(e) { alert('请手动复制链接'); }
+        document.body.removeChild(ta);
+    }
 }
 
 function doExport() {
@@ -479,20 +510,34 @@ function doExport() {
 }
 
 // ---- Init ----
-apiKey = localStorage.getItem('cvs_apikey');
+// 1. Try to get API key from URL params first (participant link)
 var params = getUrlParams();
 if (params.e) binId = params.e;
 if (params.k) {
-    apiKey = params.k;  // Auto-extract API key from URL
+    apiKey = params.k;
     localStorage.setItem('cvs_apikey', apiKey);
 }
 
+// 2. Check if owner (from localStorage)
+if (binId && localStorage.getItem('cvs_owner_' + binId)) {
+    isOwner = true;
+}
+
+// 3. If no apiKey from URL, try localStorage (organizer returning)
 if (!apiKey) {
-    showPg(0); // Show setup page
-} else if (binId) {
-    loadData(showEventPage); // Load event and show fill/stats
-} else {
-    showPg(1); // Show create page
+    apiKey = localStorage.getItem('cvs_apikey');
+}
+
+// 4. Route to correct page
+if (binId && apiKey) {
+    // Has event ID and API key → load event (participant or organizer)
+    loadData(showEventPage);
+} else if (!apiKey) {
+    // No API key at all → show setup (first-time organizer)
+    showPg(0);
+} else if (!binId) {
+    // Has API key but no event → show create page
+    showPg(1);
 }
 </script>
 </body>
