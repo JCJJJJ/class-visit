@@ -7,7 +7,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;padding:15px}
-.container{max-width:800px;margin:0 auto}
+.ct{max-width:800px;margin:0 auto}
 h1{text-align:center;color:#fff;font-size:1.6em;margin-bottom:18px}
 .card{background:#fff;border-radius:12px;padding:18px;margin-bottom:12px;box-shadow:0 8px 25px rgba(0,0,0,.15)}
 .row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
@@ -34,7 +34,7 @@ h1{text-align:center;color:#fff;font-size:1.6em;margin-bottom:18px}
 .ibox b{color:#333}
 .checks{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
 .checks label{display:flex;align-items:center;gap:4px;font-size:.86em;color:#555;cursor:pointer}
-.checks input{width:16px;height:16px}
+.checks input{width:16px;height:16px;accent-color:#667eea}
 table{width:100%;border-collapse:collapse;font-size:.84em;margin-top:8px}
 th{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:7px 6px;text-align:center;white-space:nowrap}
 td{padding:6px;border-bottom:1px solid #eee;text-align:center}
@@ -51,16 +51,30 @@ tr:hover{background:#f5f3ff}
 .sbox b{display:block;margin-bottom:4px;font-size:.88em}
 .sbox .h{font-size:.78em;color:#888;margin-top:4px}
 .larea{width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:.82em;resize:none;background:#fff;word-break:break-all}
+.tabs{display:flex;gap:0;margin:10px 0;border-radius:8px;overflow:hidden;border:2px solid #667eea}
+.tab{flex:1;padding:10px;text-align:center;font-weight:600;cursor:pointer;font-size:.9em;border:none;background:#f5f3ff;color:#667eea;transition:all .2s}
+.tab.on{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.tab:hover{opacity:.9}
+.loading{text-align:center;padding:20px;color:#667}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid #e0e0e0;border-top-color:#667eea;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{background:#fff3f3;border-left:4px solid #f44336;padding:8px 12px;margin:8px 0;font-size:.84em;color:#c62828}
 .hide{display:none}
-@media print{.btn,.bg,.sbox,.tip{display:none!important}.card{box-shadow:none;border:1px solid #ddd}}
+@media print{.btn,.bg,.sbox,.tip,.tabs{display:none!important}.card{box-shadow:none;border:1px solid #ddd}}
 @media(max-width:600px){.row{flex-direction:column}.col{min-width:100%}}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="ct">
 <h1>📋 班级参访统计</h1>
 
-<div id="pg1">
+<!-- Loading -->
+<div id="pgLoad" style="display:none">
+<div class="card"><div class="loading"><div class="spinner"></div><p>加载中...</p></div></div>
+</div>
+
+<!-- Create -->
+<div id="pgCreate">
 <div class="card">
 <h2 style="color:#333;margin-bottom:12px">📝 创建参访活动</h2>
 <div class="row">
@@ -69,28 +83,33 @@ tr:hover{background:#f5f3ff}
 </div>
 <div class="col" style="margin-bottom:10px"><label>内容描述</label><textarea id="iContent" placeholder="参访内容..." rows="2"></textarea></div>
 <div class="row">
-<div class="col"><label>活动项目</label><input type="text" id="iAct" placeholder="如：参观A工厂"></div>
-<div style="display:flex;align-items:flex-end"><button class="btn bs bsm" onclick="doAddAct()">➕添加</button></div>
+<div class="col"><label>活动项目</label><input type="text" id="iAct" placeholder="如：参观A工厂，按回车或点添加"></div>
+<div style="display:flex;align-items:flex-end"><button class="btn bs bsm" onclick="addAct()">➕添加</button></div>
 </div>
 <div id="actTags" class="tags"></div>
 <div id="noAct" style="color:#aaa;font-size:.82em;margin-top:4px">⚠️ 请添加至少一个活动项目</div>
-<div class="bg"><button class="btn bp" onclick="doCreate()">🚀 创建活动</button></div>
+<div class="bg"><button class="btn bp" id="btnCreate" onclick="doCreate()">🚀 创建活动</button></div>
 </div>
 </div>
 
-<div id="pg2" class="hide">
+<!-- Event -->
+<div id="pgEvent" style="display:none">
 <div class="card">
-<div class="ibox" id="infoBox"></div>
-<div class="sbox">
-<b>📤 分享此链接给同学填写：</b>
-<textarea id="shareLink" class="larea" rows="2" readonly></textarea>
-<div class="bg">
-<button class="btn bs" onclick="doCopy('shareLink')">📋 复制链接</button>
-</div>
-<div class="h">同学打开链接 → 填写 → 提交 → 自动生成新链接发回群里</div>
+<div class="ibox" id="eInfo"></div>
+<div class="tabs">
+<button class="tab on" id="tabStats" onclick="switchTab('stats')">📊 统计</button>
+<button class="tab" id="tabFill" onclick="switchTab('fill')">✍️ 填写</button>
 </div>
 </div>
+
+<!-- Stats -->
+<div id="pgStats">
 <div class="card">
+<div class="bg" style="margin-top:0;margin-bottom:8px">
+<button class="btn bp bsm" onclick="refreshData()">🔄 刷新</button>
+<button class="btn bp bsm" onclick="window.print()">🖨️ 打印</button>
+<button class="btn bw bsm" onclick="doExport()">📤 导出CSV</button>
+</div>
 <h2 style="color:#333;margin-bottom:8px;font-size:1em">📊 统计概览</h2>
 <div class="sgrid">
 <div class="sc"><div class="snum" id="sT">0</div><div class="slab">登记人数</div></div>
@@ -103,77 +122,72 @@ tr:hover{background:#f5f3ff}
 <div class="card"><h2 style="color:#333;margin-bottom:8px;font-size:1em">🚗 车牌号汇总</h2><div id="plateS"><div class="empty">暂无</div></div></div>
 <div class="card">
 <h2 style="color:#333;margin-bottom:8px;font-size:1em">📄 完整表格</h2>
-<div class="bg" style="margin-top:0;margin-bottom:8px">
-<button class="btn bp bsm" onclick="window.print()">🖨️ 打印</button>
-<button class="btn bw bsm" onclick="doExport()">📤 导出CSV</button>
-</div>
 <div style="overflow-x:auto"><table><thead id="tH"></thead><tbody id="tB"></tbody></table></div>
 <div id="tE" class="empty">暂无数据</div>
 </div>
-<div class="card">
-<div class="tip">📥 同学填完会把新链接发回群里，你打开最新链接就能看到所有数据。</div>
-<div class="bg">
-<button class="btn bo bsm" onclick="doFill()">✍️ 我也要填写</button>
-<button class="btn bd bsm" onclick="doReset()">🔄 重新创建</button>
-</div>
-</div>
 </div>
 
-<div id="pg3" class="hide">
-<div class="card"><div class="ibox" id="fInfo"></div></div>
-<div class="card" id="fForm">
+<!-- Fill -->
+<div id="pgFill" style="display:none">
+<div class="card" id="fillForm">
 <h2 style="color:#333;margin-bottom:10px;font-size:1em">✍️ 填写参访信息</h2>
 <div class="row">
 <div class="col"><label>姓名</label><input type="text" id="fName" placeholder="你的姓名"></div>
-<div class="col"><label>人数</label><input type="number" id="fCnt" min="1" value="1" style="width:80px"></div>
+<div class="col"><label>人数（含本人）</label><input type="number" id="fCnt" min="1" value="1" style="width:80px"></div>
 <div class="col"><label>车牌号</label><input type="text" id="fPlate" placeholder="选填"></div>
 </div>
 <div id="fChecks" class="checks"></div>
-<div class="bg"><button class="btn bs" onclick="doSubmit()">✅ 提交</button></div>
+<div class="bg"><button class="btn bs" id="btnSubmit" onclick="doSubmit()">✅ 提交</button></div>
 </div>
-<div class="card" id="fOk" style="display:none">
-<div class="ok">✅ 提交成功！请将下方新链接发回群里。</div>
+<div id="fillOk" style="display:none">
+<div class="card"><div class="ok">✅ 提交成功！你可以切换到"📊 统计"标签查看最新数据。</div></div>
+</div>
+</div>
+
+<!-- Share link -->
+<div class="card">
 <div class="sbox">
-<b>📤 新链接（复制发回群里）：</b>
-<textarea id="newLink" class="larea" rows="2" readonly></textarea>
-<div class="bg"><button class="btn bs" onclick="doCopy('newLink')">📋 复制链接</button></div>
+<b>📤 分享此链接给同学，大家填写后你直接刷新就能看到：</b>
+<textarea id="shareLink" class="larea" rows="2" readonly></textarea>
+<div class="bg"><button class="btn bs bsm" onclick="doCopy()">📋 复制链接</button></div>
+<div class="h">同学打开链接 → 填写信息 → 提交 → 你刷新页面即可看到最新统计</div>
 </div>
-</div>
-<div class="card" id="fList" style="display:none">
-<h2 style="color:#333;margin-bottom:8px;font-size:1em">📋 已登记名单</h2>
-<div id="fListContent"></div>
-</div>
-<div style="text-align:center;margin-top:8px">
-<button class="btn bo bsm" onclick="showPg2()">📊 查看统计</button>
 </div>
 </div>
 </div>
 
 <script>
+var API = 'https://jsonblob.com/api/jsonBlob';
 var D = null;
+var blobId = null;
 var myActs = [];
 
+// ---- Page switching ----
 function showPg(n) {
-    document.getElementById('pg1').style.display = n === 1 ? 'block' : 'none';
-    document.getElementById('pg2').style.display = n === 2 ? 'block' : 'none';
-    document.getElementById('pg3').style.display = n === 3 ? 'block' : 'none';
+    document.getElementById('pgLoad').style.display = 'none';
+    document.getElementById('pgCreate').style.display = n === 1 ? 'block' : 'none';
+    document.getElementById('pgEvent').style.display = n === 2 ? 'block' : 'none';
 }
-function showPg1() { showPg(1); }
-function showPg2() { if(D) renderAll(); showPg(2); }
-function showPg3() { showPg(3); }
+function showLoading() {
+    document.getElementById('pgLoad').style.display = 'block';
+    document.getElementById('pgCreate').style.display = 'none';
+    document.getElementById('pgEvent').style.display = 'none';
+}
 
-function doAddAct() {
+// ---- Activity tags ----
+function addAct() {
     var v = document.getElementById('iAct').value.trim();
     if (!v) return;
     for (var i = 0; i < myActs.length; i++) { if (myActs[i] === v) { alert('已存在'); return; } }
     myActs.push(v);
     document.getElementById('iAct').value = '';
-    renderActTags();
+    renderTags();
 }
+document.getElementById('iAct').onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); addAct(); } };
 
-function rmAct(i) { myActs.splice(i, 1); renderActTags(); }
+function rmAct(i) { myActs.splice(i, 1); renderTags(); }
 
-function renderActTags() {
+function renderTags() {
     var c = document.getElementById('actTags');
     var n = document.getElementById('noAct');
     if (!myActs.length) { c.innerHTML = ''; n.style.display = ''; return; }
@@ -185,44 +199,201 @@ function renderActTags() {
     c.innerHTML = h;
 }
 
+// ---- Create event ----
 function doCreate() {
-    try {
-        var d = document.getElementById('iDate').value;
-        var t = document.getElementById('iTitle').value.trim();
-        var c = document.getElementById('iContent').value.trim();
-        if (!d || !t) { alert('请填写日期和标题！'); return; }
-        if (!myActs.length) { alert('请至少添加一个活动项目！'); return; }
-        D = { d: d, t: t, c: c, a: myActs.slice(), s: [] };
-        myActs = [];
-        showPg2();
-        saveToHash();
-    } catch(e) { alert('创建出错: ' + e.message); }
+    var d = document.getElementById('iDate').value;
+    var t = document.getElementById('iTitle').value.trim();
+    var c = document.getElementById('iContent').value.trim();
+    if (!d || !t) { alert('请填写日期和标题！'); return; }
+    if (!myActs.length) { alert('请至少添加一个活动项目！'); return; }
+
+    D = { d: d, t: t, c: c, a: myActs.slice(), s: [] };
+    myActs = [];
+
+    var btn = document.getElementById('btnCreate');
+    btn.disabled = true;
+    btn.textContent = '⏳ 创建中...';
+
+    fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(D)
+    }).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var loc = res.headers.get('Location') || res.headers.get('location');
+        if (loc) {
+            blobId = loc.split('/').pop();
+        } else {
+            return res.json().then(function(body) {
+                blobId = body.id || body._id || '';
+                return blobId;
+            });
+        }
+        return blobId;
+    }).then(function() {
+        if (!blobId) throw new Error('未获取到ID');
+        location.hash = blobId;
+        localStorage.setItem('cvs_owner_' + blobId, '1');
+        showEventPage();
+        btn.disabled = false;
+        btn.textContent = '🚀 创建活动';
+    }).catch(function(e) {
+        alert('创建失败：' + e.message + '\n\n请检查网络连接后重试。');
+        btn.disabled = false;
+        btn.textContent = '🚀 创建活动';
+    });
 }
 
-function saveToHash() {
-    try {
-        var json = JSON.stringify(D);
-        var encoded = btoa(unescape(encodeURIComponent(json)));
-        encoded = encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        lastHash = '#' + encoded;
-        location.hash = encoded;
-    } catch(e) {}
+// ---- Load event data ----
+function loadData(callback) {
+    if (!blobId) { showPg(1); return; }
+    showLoading();
+    fetch(API + '/' + blobId, {
+        headers: { 'Accept': 'application/json' }
+    }).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    }).then(function(data) {
+        D = data;
+        if (callback) callback();
+    }).catch(function(e) {
+        alert('加载失败：' + e.message);
+        showPg(1);
+    });
 }
 
-function loadFromHash() {
-    try {
-        var h = location.hash;
-        if (!h || h.length < 2) return false;
-        var s = h.substring(1);
-        s = s.replace(/-/g, '+').replace(/_/g, '/');
-        while (s.length % 4) s += '=';
-        var decoded = decodeURIComponent(escape(atob(s)));
-        var data = JSON.parse(decoded);
-        if (data && data.d) { D = data; return true; }
-    } catch(e) {}
-    return false;
+function refreshData() {
+    if (!blobId) return;
+    var btn = event.target;
+    btn.textContent = '⏳ 刷新中...';
+    btn.disabled = true;
+    fetch(API + '/' + blobId, {
+        headers: { 'Accept': 'application/json' }
+    }).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    }).then(function(data) {
+        D = data;
+        renderAll();
+        btn.textContent = '🔄 刷新';
+        btn.disabled = false;
+    }).catch(function(e) {
+        alert('刷新失败：' + e.message);
+        btn.textContent = '🔄 刷新';
+        btn.disabled = false;
+    });
 }
 
+// ---- Show event page ----
+function showEventPage() {
+    showPg(2);
+    renderEventInfo();
+    renderAll();
+    // Default to stats if owner, fill if not
+    var isOwner = localStorage.getItem('cvs_owner_' + blobId);
+    if (isOwner) { switchTab('stats'); } else { switchTab('fill'); }
+}
+
+function renderEventInfo() {
+    if (!D) return;
+    var h = '<p><b>📅 日期：</b>' + D.d + '</p>';
+    h += '<p><b>📌 标题：</b>' + D.t + '</p>';
+    h += '<p><b>📝 内容：</b>' + (D.c || '无') + '</p>';
+    h += '<p><b>🎯 活动项目：</b>' + (D.a || []).join('、') + '</p>';
+    document.getElementById('eInfo').innerHTML = h;
+
+    var baseUrl = location.href.split('#')[0];
+    document.getElementById('shareLink').value = baseUrl + '#' + blobId;
+}
+
+// ---- Tab switching ----
+function switchTab(tab) {
+    document.getElementById('tabStats').className = tab === 'stats' ? 'tab on' : 'tab';
+    document.getElementById('tabFill').className = tab === 'fill' ? 'tab on' : 'tab';
+    document.getElementById('pgStats').style.display = tab === 'stats' ? 'block' : 'none';
+    document.getElementById('pgFill').style.display = tab === 'fill' ? 'block' : 'none';
+
+    if (tab === 'stats') { renderAll(); }
+    if (tab === 'fill') { setupFillForm(); }
+}
+
+function setupFillForm() {
+    if (!D) return;
+    var actList = D.a || [];
+    var ch = '';
+    for (var i = 0; i < actList.length; i++) {
+        ch += '<label><input type="checkbox" id="fa' + i + '" checked> ' + actList[i] + '</label>';
+    }
+    document.getElementById('fChecks').innerHTML = ch;
+    document.getElementById('fillForm').style.display = 'block';
+    document.getElementById('fillOk').style.display = 'none';
+    var mn = localStorage.getItem('cvs_name');
+    if (mn) document.getElementById('fName').value = mn;
+}
+
+// ---- Submit ----
+function doSubmit() {
+    if (!D || !blobId) return;
+    var name = document.getElementById('fName').value.trim();
+    var count = parseInt(document.getElementById('fCnt').value) || 1;
+    var plate = document.getElementById('fPlate').value.trim();
+    if (!name) { alert('请输入姓名！'); return; }
+
+    var btn = document.getElementById('btnSubmit');
+    btn.disabled = true;
+    btn.textContent = '⏳ 提交中...';
+
+    // First, get latest data to avoid overwriting
+    fetch(API + '/' + blobId, {
+        headers: { 'Accept': 'application/json' }
+    }).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    }).then(function(data) {
+        D = data;
+        // Check duplicate
+        for (var i = 0; i < D.s.length; i++) {
+            if (D.s[i].n === name) {
+                if (!confirm('"' + name + '" 已登记，是否覆盖？')) {
+                    btn.disabled = false;
+                    btn.textContent = '✅ 提交';
+                    return Promise.reject('cancel');
+                }
+                D.s.splice(i, 1);
+                break;
+            }
+        }
+        // Add submission
+        var actData = [];
+        for (var i = 0; i < D.a.length; i++) {
+            var cb = document.getElementById('fa' + i);
+            actData.push(cb ? cb.checked : false);
+        }
+        D.s.push({ n: name, c: Math.max(1, count), p: plate, a: actData });
+        localStorage.setItem('cvs_name', name);
+
+        // Save back
+        return fetch(API + '/' + blobId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(D)
+        });
+    }).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        document.getElementById('fillForm').style.display = 'none';
+        document.getElementById('fillOk').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '✅ 提交';
+    }).catch(function(e) {
+        if (e !== 'cancel') {
+            alert('提交失败：' + e.message);
+        }
+        btn.disabled = false;
+        btn.textContent = '✅ 提交';
+    });
+}
+
+// ---- Render stats ----
 function renderAll() {
     if (!D) return;
     var subs = D.s || [];
@@ -234,47 +405,40 @@ function renderAll() {
     var plates = [];
     for (var k in plateObj) plates.push(k);
 
-    // Info box
-    var ib = document.getElementById('infoBox');
-    ib.innerHTML = '<p><b>📅 日期：</b>' + D.d + '</p><p><b>📌 标题：</b>' + D.t + '</p><p><b>📝 内容：</b>' + (D.c || '无') + '</p><p><b>🎯 活动：</b>' + actList.join('、') + '</p>';
-
-    // Share link
-    var baseUrl = location.href.split('#')[0];
-    document.getElementById('shareLink').value = baseUrl + '#' + btoa(unescape(encodeURIComponent(JSON.stringify(D)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-
-    // Stats
     document.getElementById('sT').textContent = tp;
     document.getElementById('sC').textContent = tc;
     document.getElementById('sP').textContent = plates.length;
 
+    // Activity stats
     var ag = document.getElementById('sActs');
     if (actList.length && tp) {
         var sh = '<div class="sgrid">';
         for (var i = 0; i < actList.length; i++) {
             var ps = 0, pc = 0;
             for (var j = 0; j < subs.length; j++) { if (subs[j].a && subs[j].a[i]) { ps++; pc += (subs[j].c || 1); } }
-            sh += '<div class="sc sca"><div class="snum">' + ps + '</div><div class="slab">"' + actList[i] + '"</div><div style="font-size:.78em;color:#888">' + pc + '人 | ' + (tp?Math.round(ps/tp*100):0) + '%</div></div>';
+            sh += '<div class="sc sca"><div class="snum">' + ps + '</div><div class="slab">"' + actList[i] + '"</div><div style="font-size:.78em;color:#888">' + pc + '人 | ' + (tp ? Math.round(ps / tp * 100) : 0) + '%</div></div>';
         }
         ag.innerHTML = sh + '</div>';
-    } else ag.innerHTML = '';
+    } else { ag.innerHTML = ''; }
 
     // Activity detail
     var ad = document.getElementById('actDet');
-    if (!tp) { ad.innerHTML = '<div class="empty">暂无提交</div>'; }
+    if (!tp) { ad.innerHTML = '<div class="empty">暂无提交，切换到"✍️ 填写"标签填写信息</div>'; }
     else {
         var h = '';
         for (var ai = 0; ai < actList.length; ai++) {
             var yes = [], no = [];
             for (var j = 0; j < subs.length; j++) { if (subs[j].a && subs[j].a[ai]) yes.push(subs[j]); else no.push(subs[j]); }
             var yc = 0, nc = 0;
-            for (var j = 0; j < yes.length; j++) yc += (yes[j].c||1);
-            for (var j = 0; j < no.length; j++) nc += (no[j].c||1);
-            h += '<h3 style="color:#555;margin:8px 0 4px;font-size:.9em">🎯 ' + actList[ai] + '</h3><div style="display:flex;gap:10px;flex-wrap:wrap">';
+            for (var j = 0; j < yes.length; j++) yc += (yes[j].c || 1);
+            for (var j = 0; j < no.length; j++) nc += (no[j].c || 1);
+            h += '<h3 style="color:#555;margin:8px 0 4px;font-size:.9em">🎯 ' + actList[ai] + '</h3>';
+            h += '<div style="display:flex;gap:10px;flex-wrap:wrap">';
             h += '<div style="flex:1;min-width:180px"><p style="color:#11998e;font-size:.82em;font-weight:600">✅ 参加（' + yes.length + '人/' + yc + '人）</p>';
-            if (yes.length) { h += '<table><tr><th>姓名</th><th>人数</th><th>车牌</th></tr>'; for(var j=0;j<yes.length;j++) h+='<tr><td>'+yes[j].n+'</td><td>'+(yes[j].c||1)+'</td><td>'+(yes[j].p||'—')+'</td></tr>'; h+='</table>'; }
+            if (yes.length) { h += '<table><tr><th>姓名</th><th>人数</th><th>车牌</th></tr>'; for (var j = 0; j < yes.length; j++) h += '<tr><td>' + yes[j].n + '</td><td>' + (yes[j].c || 1) + '</td><td>' + (yes[j].p || '—') + '</td></tr>'; h += '</table>'; }
             else h += '<p style="color:#aaa;font-size:.8em">无</p>';
             h += '</div><div style="flex:1;min-width:180px"><p style="color:#f45c43;font-size:.82em;font-weight:600">❌ 未参加（' + no.length + '人/' + nc + '人）</p>';
-            if (no.length) { h += '<table><tr><th>姓名</th><th>人数</th><th>车牌</th></tr>'; for(var j=0;j<no.length;j++) h+='<tr><td>'+no[j].n+'</td><td>'+(no[j].c||1)+'</td><td>'+(no[j].p||'—')+'</td></tr>'; h+='</table>'; }
+            if (no.length) { h += '<table><tr><th>姓名</th><th>人数</th><th>车牌</th></tr>'; for (var j = 0; j < no.length; j++) h += '<tr><td>' + no[j].n + '</td><td>' + (no[j].c || 1) + '</td><td>' + (no[j].p || '—') + '</td></tr>'; h += '</table>'; }
             else h += '<p style="color:#aaa;font-size:.8em">无</p>';
             h += '</div></div>';
         }
@@ -287,141 +451,75 @@ function renderAll() {
         var ph = '<table><tr><th>序号</th><th>车牌号</th><th>人员</th><th>人数</th></tr>';
         for (var i = 0; i < plates.length; i++) {
             var pp = [], ppc = 0;
-            for (var j = 0; j < subs.length; j++) { if (subs[j].p === plates[i]) { pp.push(subs[j].n); ppc += (subs[j].c||1); } }
-            ph += '<tr><td>'+(i+1)+'</td><td><b>'+plates[i]+'</b></td><td>'+pp.join('、')+'</td><td>'+ppc+'</td></tr>';
+            for (var j = 0; j < subs.length; j++) { if (subs[j].p === plates[i]) { pp.push(subs[j].n); ppc += (subs[j].c || 1); } }
+            ph += '<tr><td>' + (i + 1) + '</td><td><b>' + plates[i] + '</b></td><td>' + pp.join('、') + '</td><td>' + ppc + '</td></tr>';
         }
         ps2.innerHTML = ph + '</table>';
     } else ps2.innerHTML = '<div class="empty">暂无</div>';
 
     // Full table
     var tH = document.getElementById('tH'), tB = document.getElementById('tB'), tE = document.getElementById('tE');
-    if (!tp) { tH.innerHTML=''; tB.innerHTML=''; tE.style.display=''; return; }
+    if (!tp) { tH.innerHTML = ''; tB.innerHTML = ''; tE.style.display = 'block'; return; }
     tE.style.display = 'none';
     var th = '<tr><th>序号</th><th>姓名</th><th>人数</th><th>车牌号</th>';
     for (var i = 0; i < actList.length; i++) th += '<th>' + actList[i] + '</th>';
     tH.innerHTML = th + '</tr>';
     var tb = '';
     for (var i = 0; i < subs.length; i++) {
-        tb += '<tr><td>'+(i+1)+'</td><td>'+subs[i].n+'</td><td>'+(subs[i].c||1)+'</td><td>'+(subs[i].p||'—')+'</td>';
-        for (var j = 0; j < actList.length; j++) tb += '<td>'+(subs[i].a&&subs[i].a[j]?'<span class="y">✅</span>':'<span class="n">❌</span>')+'</td>';
+        tb += '<tr><td>' + (i + 1) + '</td><td>' + subs[i].n + '</td><td>' + (subs[i].c || 1) + '</td><td>' + (subs[i].p || '—') + '</td>';
+        for (var j = 0; j < actList.length; j++) tb += '<td>' + (subs[i].a && subs[i].a[j] ? '<span class="y">✅</span>' : '<span class="n">❌</span>') + '</td>';
         tb += '</tr>';
     }
-    tb += '<tr style="background:#f5f3ff;font-weight:600"><td colspan="2">合计</td><td>'+tc+'</td><td>'+plates.length+'辆</td>';
+    tb += '<tr style="background:#f5f3ff;font-weight:600"><td colspan="2">合计</td><td>' + tc + '</td><td>' + plates.length + '辆</td>';
     for (var j = 0; j < actList.length; j++) {
-        var y=0,yc=0; for(var i=0;i<subs.length;i++){if(subs[i].a&&subs[i].a[j]){y++;yc+=(subs[i].c||1);}}
-        tb += '<td>'+y+'/'+yc+'</td>';
+        var y = 0, yc2 = 0;
+        for (var i = 0; i < subs.length; i++) { if (subs[i].a && subs[i].a[j]) { y++; yc2 += (subs[i].c || 1); } }
+        tb += '<td>' + y + '/' + yc2 + '</td>';
     }
     tB.innerHTML = tb + '</tr>';
 }
 
-function doFill() {
-    if (!D) return;
-    showPg3();
-    var actList = D.a || [], subs = D.s || [];
-    var h = '<p><b>📅 日期：</b>' + D.d + '</p><p><b>📌 标题：</b>' + D.t + '</p><p><b>📝 内容：</b>' + (D.c||'无') + '</p><p><b>🎯 活动：</b>' + actList.join('、') + '</p><p><b>📊 已登记：</b>' + subs.length + '人</p>';
-    document.getElementById('fInfo').innerHTML = h;
-
-    var ch = '';
-    for (var i = 0; i < actList.length; i++) ch += '<label><input type="checkbox" id="fa' + i + '" checked> ' + actList[i] + '</label>';
-    document.getElementById('fChecks').innerHTML = ch;
-
-    document.getElementById('fForm').style.display = '';
-    document.getElementById('fOk').style.display = 'none';
-    document.getElementById('fList').style.display = 'none';
-
-    var mn = localStorage.getItem('cvs_name');
-    if (mn) document.getElementById('fName').value = mn;
-}
-
-function doSubmit() {
-    if (!D) return;
-    var name = document.getElementById('fName').value.trim();
-    var count = parseInt(document.getElementById('fCnt').value) || 1;
-    var plate = document.getElementById('fPlate').value.trim();
-    if (!name) { alert('请输入姓名！'); return; }
-
-    for (var i = 0; i < D.s.length; i++) { if (D.s[i].n === name) { if(!confirm('"'+name+'" 已登记，覆盖？')) return; D.s.splice(i,1); break; } }
-
-    var actData = [];
-    for (var i = 0; i < D.a.length; i++) { var cb = document.getElementById('fa'+i); actData.push(cb ? cb.checked : false); }
-    D.s.push({ n: name, c: Math.max(1,count), p: plate, a: actData });
-    localStorage.setItem('cvs_name', name);
-
-    var link = location.href.split('#')[0] + '#' + btoa(unescape(encodeURIComponent(JSON.stringify(D)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    document.getElementById('newLink').value = link;
-    document.getElementById('fOk').style.display = '';
-    document.getElementById('fForm').style.display = 'none';
-
-    // Show list
-    var subs = D.s, actList = D.a;
-    var lh = '<table><tr><th>序号</th><th>姓名</th><th>人数</th><th>车牌</th>';
-    for (var i = 0; i < actList.length; i++) lh += '<th>' + actList[i] + '</th>';
-    lh += '</tr>';
-    for (var i = 0; i < subs.length; i++) {
-        lh += '<tr><td>'+(i+1)+'</td><td>'+subs[i].n+'</td><td>'+(subs[i].c||1)+'</td><td>'+(subs[i].p||'—')+'</td>';
-        for (var j = 0; j < actList.length; j++) lh += '<td>'+(subs[i].a&&subs[i].a[j]?'<span class="y">✅</span>':'<span class="n">❌</span>')+'</td>';
-        lh += '</tr>';
-    }
-    document.getElementById('fListContent').innerHTML = lh + '</table>';
-    document.getElementById('fList').style.display = '';
-
-    saveToHash();
-}
-
-function doCopy(id) {
-    var el = document.getElementById(id);
+// ---- Copy & Export ----
+function doCopy() {
+    var el = document.getElementById('shareLink');
     el.select();
-    try { document.execCommand('copy'); alert('✅ 已复制！'); } catch(e) { alert('请手动复制'); }
-}
-
-function doReset() {
-    if (!confirm('确定重新创建？')) return;
-    D = null; myActs = []; location.hash = '';
-    document.getElementById('iDate').value = '';
-    document.getElementById('iTitle').value = '';
-    document.getElementById('iContent').value = '';
-    renderActTags();
-    showPg1();
+    try { document.execCommand('copy'); alert('✅ 链接已复制！发到班级群即可。'); } catch (e) { alert('请手动复制'); }
 }
 
 function doExport() {
     if (!D || !D.s.length) { alert('暂无数据'); return; }
     var csv = '\uFEFF';
-    csv += '参访日期,'+D.d+'\n参访标题,'+D.t+'\n参访内容,'+D.c+'\n\n';
-    csv += '序号,姓名,人数,车牌号,'+D.a.join(',')+'\n';
+    csv += '参访日期,' + D.d + '\n参访标题,' + D.t + '\n参访内容,' + D.c + '\n\n';
+    csv += '序号,姓名,人数,车牌号,' + D.a.join(',') + '\n';
     for (var i = 0; i < D.s.length; i++) {
-        csv += (i+1)+','+D.s[i].n+','+(D.s[i].c||1)+','+(D.s[i].p||'')+',';
-        for (var j = 0; j < D.a.length; j++) csv += (D.s[i].a&&D.s[i].a[j]?'是':'否')+',';
+        csv += (i + 1) + ',' + D.s[i].n + ',' + (D.s[i].c || 1) + ',' + (D.s[i].p || '') + ',';
+        for (var j = 0; j < D.a.length; j++) csv += (D.s[i].a && D.s[i].a[j] ? '是' : '否') + ',';
         csv += '\n';
     }
-    var blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a'); a.href = url; a.download = '参访统计.csv'; a.click();
 }
 
-// Init
-try {
-    if (loadFromHash()) {
-        var myName = localStorage.getItem('cvs_name');
-        var found = false;
-        if (myName) { for (var i = 0; i < D.s.length; i++) { if (D.s[i].n === myName) { found = true; break; } } }
-        if (found) showPg2(); else doFill();
-    } else {
-        showPg1();
-    }
-} catch(e) { showPg1(); }
+// ---- Init ----
+blobId = location.hash.slice(1);
+if (blobId) {
+    loadData(showEventPage);
+} else {
+    showPg(1);
+}
 
-// Handle back/forward - but don't interfere with programmatic hash changes
-var lastHash = location.hash;
-window.addEventListener('hashchange', function() {
-    if (location.hash === lastHash) return;
-    lastHash = location.hash;
-    if (loadFromHash()) {
-        var myName = localStorage.getItem('cvs_name');
-        var found = false;
-        if (myName) { for (var i = 0; i < D.s.length; i++) { if (D.s[i].n === myName) { found = true; break; } } }
-        if (found) showPg2(); else doFill();
-    } else { showPg1(); }
+// Handle hash change (back/forward)
+window.addEventListener('hashchange', function () {
+    var newId = location.hash.slice(1);
+    if (newId && newId !== blobId) {
+        blobId = newId;
+        loadData(showEventPage);
+    } else if (!newId) {
+        blobId = null;
+        D = null;
+        showPg(1);
+    }
 });
 </script>
 </body>
