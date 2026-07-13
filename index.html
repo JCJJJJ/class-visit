@@ -196,29 +196,23 @@ var apiKey = null;
 var isOwner = false;
 var myActs = [];
 
-// Base64 helpers for safe URL encoding of API key
-function b64Encode(str) {
-    return btoa(unescape(encodeURIComponent(str)));
-}
-function b64Decode(str) {
-    return decodeURIComponent(escape(atob(str)));
-}
-
-// URL: ?e=base64(binId)&k=base64(apiKey)
-// Using base64 to avoid special character issues ($, /, + in API keys)
+// URL: ?e=binId&k=apiKey (encodeURIComponent handles all special chars)
 function getUrlParams() {
-    var params = new URLSearchParams(location.search);
-    var e = params.get('e');
-    var k = params.get('k');
-    return {
-        e: e ? b64Decode(e) : null,
-        k: k ? b64Decode(k) : null
-    };
+    try {
+        var params = new URLSearchParams(location.search);
+        return {
+            e: params.get('e'),
+            k: params.get('k')
+        };
+    } catch(err) {
+        console.error('URL解析失败:', err);
+        return { e: null, k: null };
+    }
 }
 
 function makeShareUrl(bid, key) {
     var base = location.href.split('?')[0].split('#')[0];
-    return base + '?e=' + b64Encode(bid) + '&k=' + b64Encode(key);
+    return base + '?e=' + encodeURIComponent(bid) + '&k=' + encodeURIComponent(key);
 }
 
 // ---- Page switching ----
@@ -528,6 +522,13 @@ if (!apiKey) {
     apiKey = localStorage.getItem('cvs_apikey');
 }
 
+// Debug: show what was parsed from URL
+console.log('URL:', location.href);
+console.log('search:', location.search);
+console.log('Parsed binId:', binId);
+console.log('Parsed apiKey:', apiKey ? apiKey.substring(0, 8) + '...' : null);
+console.log('isOwner:', isOwner);
+
 // 4. Route to correct page
 if (binId && apiKey) {
     // Has event ID and API key → load event (participant or organizer)
@@ -535,6 +536,14 @@ if (binId && apiKey) {
 } else if (!apiKey) {
     // No API key at all → show setup (first-time organizer)
     showPg(0);
+    // Show debug info if there were URL params but parsing failed
+    if (location.search && location.search.length > 1) {
+        var dbg = document.createElement('div');
+        dbg.className = 'card';
+        dbg.style.background = '#fff3e0';
+        dbg.innerHTML = '<p style="color:#e65100;font-size:.85em">⚠️ 链接参数解析失败，请让组织者重新复制分享链接。</p><p style="color:#888;font-size:.75em">调试: URL参数长度=' + location.search.length + ', binId=' + (binId||'空') + ', apiKey=' + (apiKey?'有':'空') + '</p>';
+        document.getElementById('pgSetup').appendChild(dbg);
+    }
 } else if (!binId) {
     // Has API key but no event → show create page
     showPg(1);
