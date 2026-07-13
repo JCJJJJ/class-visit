@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班级参访统计</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;padding:15px}
+        .container{max-width:900px;margin:0 auto}
+        h1{text-align:center;color:#fff;font-size:1.7em;margin-bottom:20px;text-shadow:2px 2px 4px rgba(0,0,0,.3)}
+        .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:14px;box-shadow:0 8px 25px rgba(0,0,0,.15)}
+        .card-title{font-size:1.15em;color:#333;margin-bottom:14px;padding-bottom:10px;border-bottom:3px solid #667eea;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .form-row{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+        .form-group{flex:1;min-width:160px}
+        .form-group label{display:block;font-weight:600;color:#555;margin-bottom:5px;font-size:.88em}
+        .form-group input,.form-group textarea{width:100%;padding:9px 11px;border:2px solid #e0e0e0;border-radius:8px;font-size:.9em;transition:border-color .3s;font-family:inherit}
+        .form-group input:focus,.form-group textarea:focus{outline:none;border-color:#667eea}
+        .form-group textarea{resize:vertical;min-height:50px}
+        .btn{padding:8px 18px;border:none;border-radius:8px;font-size:.88em;cursor:pointer;font-weight:600;transition:all .3s;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+        .btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+        .btn-primary:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,.4)}
+        .btn-success{background:linear-gradient(135deg,#11998e,#38ef7d);color:#fff}
+        .btn-success:hover{transform:translateY(-2px)}
+        .btn-danger{background:linear-gradient(135deg,#eb3349,#f45c43);color:#fff}
+        .btn-warning{background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff}
+        .btn-small{padding:5px 12px;font-size:.8em}
+        .btn-group{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+        .role-select{display:flex;gap:15px;justify-content:center;margin:25px 0;flex-wrap:wrap}
+        .role-card{background:#fff;border-radius:16px;padding:28px 22px;text-align:center;cursor:pointer;transition:all .3s;width:210px;box-shadow:0 5px 20px rgba(0,0,0,.1)}
+        .role-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,.2)}
+        .role-icon{font-size:2.8em;margin-bottom:8px}
+        .role-name{font-size:1.15em;font-weight:700;color:#333;margin-bottom:4px}
+        .role-desc{font-size:.82em;color:#888}
+        .activity-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+        .activity-tag{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:4px 12px;border-radius:18px;font-size:.84em;display:flex;align-items:center;gap:5px}
+        .activity-tag .rm{cursor:pointer;font-weight:700;opacity:.8}
+        .activity-tag .rm:hover{opacity:1}
+        .code-text{width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-family:'Consolas',monospace;font-size:.84em;resize:vertical;background:#fff;word-break:break-all}
+        .code-text:focus{outline:none;border-color:#667eea}
+        .step-indicator{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+        .step-num{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85em;flex-shrink:0}
+        .step-text{font-weight:600;color:#333;font-size:.95em}
+        .info-display{background:#f5f3ff;border-radius:8px;padding:11px;margin-bottom:10px}
+        .info-display p{margin:3px 0;color:#555;font-size:.88em}
+        .info-display strong{color:#333}
+        .table-wrapper{overflow-x:auto;margin-top:10px}
+        table{width:100%;border-collapse:collapse;font-size:.86em}
+        table th{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:9px 7px;text-align:center;white-space:nowrap}
+        table td{padding:7px;border-bottom:1px solid #eee;text-align:center;vertical-align:middle}
+        table tr:hover{background:#f5f3ff}
+        table tr:nth-child(even){background:#fafafe}
+        .hy{color:#11998e;font-weight:600}
+        .hn{color:#ccc}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+        .stat-card{background:linear-gradient(135deg,#f5f7fa,#c3cfe2);border-radius:10px;padding:14px;text-align:center}
+        .stat-card.as{background:linear-gradient(135deg,#a8edea,#fed6e3)}
+        .stat-number{font-size:1.9em;font-weight:700;color:#333}
+        .stat-label{color:#666;font-size:.88em;margin-top:2px}
+        .empty-state{text-align:center;color:#aaa;padding:22px;font-size:.92em}
+        .tip-box{background:#fff8e1;border-left:4px solid #ffc107;padding:9px 13px;border-radius:0 8px 8px 0;margin:8px 0;font-size:.86em;color:#666;line-height:1.5}
+        .back-btn{background:none;border:none;color:#667eea;cursor:pointer;font-size:.92em;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-bottom:10px}
+        .back-btn:hover{text-decoration:underline}
+        .hidden{display:none!important}
+        .activity-check-list{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
+        .activity-check-item{display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:500;color:#555;font-size:.88em}
+        .activity-check-item input{accent-color:#667eea;width:16px;height:16px}
+        .qr-container{display:flex;flex-direction:column;align-items:center;margin-top:12px}
+        .qr-container label{font-weight:600;color:#555;font-size:.88em;margin-bottom:8px}
+        .qr-wrapper{background:#fff;padding:10px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);display:inline-block}
+        .qr-wrapper img{display:block}
+        .qr-hint{font-size:.78em;color:#999;margin-top:6px;text-align:center}
+        .code-with-qr{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+        .code-with-qr .code-left{flex:1;min-width:200px}
+        .code-with-qr .code-right{flex-shrink:0}
+        .sync-badge{padding:3px 10px;border-radius:12px;font-size:.72em;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+        .sync-badge.on{background:#11998e;color:#fff}
+        .sync-badge.off{background:#ccc;color:#fff}
+        .sync-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+        .pulse{animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        @media print{body{background:#fff;padding:10px}.btn,.btn-group,.no-print,.back-btn{display:none!important}.card{box-shadow:none;border:1px solid #ddd;break-inside:avoid}}
+        @media(max-width:600px){.form-row{flex-direction:column}.form-group{min-width:100%}h1{font-size:1.3em}.role-card{width:100%;max-width:260px}}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📋 班级参访统计</h1>
+
+    <!-- Role Select -->
+    <div id="pageRole">
+        <div class="role-select">
+            <div class="role-card" onclick="enterOrg()">
+                <div class="role-icon">👨‍💼</div>
+                <div class="role-name">我是组织者</div>
+                <div class="role-desc">创建活动、实时查看统计</div>
+            </div>
+            <div class="role-card" onclick="enterPar()">
+                <div class="role-icon">🙋</div>
+                <div class="role-name">我是参与者</div>
+                <div class="role-desc">填写参访信息、一键提交</div>
+            </div>
+        </div>
+        <div class="tip-box">
+            💡 <strong>零配置</strong>：无需注册任何服务，打开即用！<br>
+            参与者提交后，组织者页面<strong>自动更新</strong>统计（需组织者保持页面打开）。
+        </div>
+    </div>
+
+    <!-- Organizer -->
+    <div id="pageOrg" class="hidden">
+        <button class="back-btn" onclick="goBack()">← 返回</button>
+        <span id="orgSync" class="sync-badge off"><span class="sync-dot"></span>同步中</span>
+
+        <div class="card">
+            <div class="step-indicator"><div class="step-num">1</div><div class="step-text">创建活动</div></div>
+            <div class="form-row">
+                <div class="form-group"><label>参访日期</label><input type="date" id="orgDate"></div>
+                <div class="form-group"><label>参访标题</label><input type="text" id="orgTitle" placeholder="例如：春季企业参访"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:10px"><label>参访内容/描述</label><textarea id="orgContent" placeholder="请输入参访详细内容..." rows="2"></textarea></div>
+            <div class="form-row">
+                <div class="form-group"><label>添加活动项目</label><input type="text" id="orgActName" placeholder="例如：参观A工厂" onkeypress="if(event.key==='Enter')orgAddAct()"></div>
+                <div class="form-group" style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn btn-success btn-small" onclick="orgAddAct()">➕ 添加</button></div>
+            </div>
+            <div id="orgActTags" class="activity-tags"></div>
+            <div id="orgNoAct" style="color:#aaa;font-size:.84em;margin-top:4px">暂未添加活动项目</div>
+            <div class="btn-group"><button class="btn btn-primary" onclick="orgCreate()">🚀 创建并发布</button></div>
+        </div>
+
+        <div class="card" id="orgShareCard" style="display:none">
+            <div class="step-indicator"><div class="step-num">2</div><div class="step-text">分享给同学</div></div>
+            <div class="tip-box">📤 将二维码或链接发到班级群，同学打开即可填写，数据<strong>自动同步</strong>！<br>⚠️ 请保持此页面打开，否则同学无法实时提交。</div>
+            <div class="code-with-qr">
+                <div class="code-left">
+                    <label style="font-weight:600;color:#555;font-size:.88em">活动链接：</label>
+                    <textarea id="orgLink" class="code-text" rows="2" readonly></textarea>
+                    <div class="btn-group"><button class="btn btn-success btn-small" onclick="copyText('orgLink')">📋 复制链接</button></div>
+                </div>
+                <div class="code-right">
+                    <div class="qr-container">
+                        <label>📱 扫码加入</label>
+                        <div class="qr-wrapper" id="orgQR"></div>
+                        <div class="qr-hint">同学扫码即可填写</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="step-indicator">
+                <div class="step-num">3</div>
+                <div class="step-text">实时统计 <span class="pulse" style="font-size:.7em;color:#11998e;margin-left:4px">● LIVE</span></div>
+            </div>
+            <div id="orgStatsInfo" class="hidden">
+                <div class="info-display">
+                    <p><strong>📅 日期：</strong><span id="orgSDate"></span></p>
+                    <p><strong>📌 标题：</strong><span id="orgSTitle"></span></p>
+                    <p><strong>📝 内容：</strong><span id="orgSContent"></span></p>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number" id="sTotal">0</div><div class="stat-label">登记人数</div></div>
+                <div class="stat-card"><div class="stat-number" id="sCount">0</div><div class="stat-label">参访总人数</div></div>
+                <div class="stat-card"><div class="stat-number" id="sPlates">0</div><div class="stat-label">车牌数</div></div>
+            </div>
+            <div id="sActGrid"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">📋 各活动参与详情</div>
+            <div id="sActDetail"><div class="empty-state">创建活动后，参与者提交的数据将自动显示</div></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">🚗 车牌号汇总</div>
+            <div id="sPlateSum"><div class="empty-state">暂无车牌数据</div></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">📄 完整统计表</div>
+            <div class="btn-group no-print" style="margin-top:0;margin-bottom:10px">
+                <button class="btn btn-primary btn-small" onclick="window.print()">🖨️ 打印</button>
+                <button class="btn btn-warning btn-small" onclick="exportCSV()">📤 导出CSV</button>
+                <button class="btn btn-danger btn-small" onclick="orgReset()">🔄 重置（新建活动）</button>
+            </div>
+            <div class="table-wrapper"><table><thead id="ftHead"></thead><tbody id="ftBody"></tbody></table></div>
+            <div id="ftEmpty" class="empty-state">暂无数据</div>
+        </div>
+    </div>
+
+    <!-- Participant -->
+    <div id="pagePar" class="hidden">
+        <button class="back-btn" onclick="goBack()">← 返回</button>
+
+        <div class="card">
+            <div class="step-indicator"><div class="step-num">1</div><div class="step-text">加入活动</div></div>
+            <div class="tip-box">📋 扫码或粘贴组织者发的<strong>活动链接</strong>即可加入。</div>
+            <div class="form-group">
+                <label>粘贴活动链接</label>
+                <textarea id="parLink" class="code-text" rows="2" placeholder="将组织者发的活动链接粘贴到这里..."></textarea>
+            </div>
+            <div class="btn-group"><button class="btn btn-primary" onclick="parJoin()">🔍 加入活动</button></div>
+            <div id="parInfo" class="info-display hidden" style="margin-top:10px">
+                <p><strong>📅 日期：</strong><span id="parDate"></span></p>
+                <p><strong>📌 标题：</strong><span id="parTitle"></span></p>
+                <p><strong>📝 内容：</strong><span id="parContent"></span></p>
+                <p><strong>🎯 活动项目：</strong><span id="parActs"></span></p>
+            </div>
+        </div>
+
+        <div class="card" id="parFillCard" style="opacity:.5;pointer-events:none">
+            <div class="step-indicator"><div class="step-num">2</div><div class="step-text">填写参访信息</div></div>
+            <div class="form-row">
+                <div class="form-group"><label>姓名</label><input type="text" id="parName" placeholder="请输入您的姓名"></div>
+                <div class="form-group"><label>人数（含本人）</label><input type="number" id="parCount" min="1" value="1" style="width:90px"></div>
+                <div class="form-group"><label>车牌号</label><input type="text" id="parPlate" placeholder="选填"></div>
+            </div>
+            <div id="parActChecks" class="activity-check-list"></div>
+            <div class="btn-group"><button class="btn btn-success" onclick="parSubmit()">✅ 提交</button></div>
+        </div>
+
+        <div class="card" id="parOkCard" style="display:none">
+            <div style="text-align:center;padding:18px 0">
+                <div style="font-size:2.8em">✅</div>
+                <h2 style="color:#11998e;margin:8px 0">提交成功！</h2>
+                <p style="color:#666;font-size:.9em">您的信息已自动同步给组织者，无需其他操作。</p>
+                <div class="btn-group" style="justify-content:center;margin-top:12px">
+                    <button class="btn btn-warning btn-small" onclick="parModify()">✏️ 修改我的信息</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ====== State ======
+let gun = null;
+let eventId = null;
+let orgActs = [];
+let orgPersons = [];
+let orgInfo = {};
+let parData = null;
+let parMyKey = null;
+let submissions = {}; // key -> data, for dedup
+
+// ====== Init Gun ======
+function initGun() {
+    if (gun) return;
+    gun = Gun({
+        peers: [
+            'https://gun-manhattan.herokuapp.com/gun',
+            'https://gun-us.herokuapp.com/gun'
+        ],
+        localStorage: true
+    });
+}
+
+// ====== Utility ======
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,6); }
+
+function genQR(id, text) {
+    const c = document.getElementById(id); c.innerHTML = '';
+    try { new QRCode(c, { text, width: 170, height: 170, colorDark: '#333', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.L }); }
+    catch(e) { c.innerHTML = '<p style="color:#aaa;font-size:.8em">二维码生成失败</p>'; }
+}
+
+function copyText(id) {
+    const el = document.getElementById(id); el.select(); el.setSelectionRange(0,99999);
+    if(navigator.clipboard) navigator.clipboard.writeText(el.value).then(()=>alert('✅ 已复制！'));
+    else { document.execCommand('copy'); alert('✅ 已复制！'); }
+}
+
+function getPageUrl() { return window.location.href.split('?')[0].split('#')[0]; }
+
+// ====== Navigation ======
+function showPage(id) {
+    ['pageRole','pageOrg','pagePar'].forEach(p =>
+        document.getElementById(p).classList.toggle('hidden', p !== id));
+    window.scrollTo(0,0);
+}
+function goBack() { showPage('pageRole'); }
+function enterOrg() {
+    showPage('pageOrg');
+    initGun();
+    // Check for existing event
+    const saved = localStorage.getItem('cvs_evt');
+    if (saved) {
+        try {
+            const d = JSON.parse(saved);
+            eventId = d.eventId;
+            orgInfo = d.basicInfo || {};
+            orgActs = d.activities || [];
+            document.getElementById('orgDate').value = orgInfo.date || '';
+            document.getElementById('orgTitle').value = orgInfo.title || '';
+            document.getElementById('orgContent').value = orgInfo.content || '';
+            renderOrgActs();
+            if (orgInfo.date) {
+                document.getElementById('orgStatsInfo').classList.remove('hidden');
+                document.getElementById('orgSDate').textContent = orgInfo.date;
+                document.getElementById('orgSTitle').textContent = orgInfo.title;
+                document.getElementById('orgSContent').textContent = orgInfo.content || '无';
+            }
+            if (eventId) {
+                const url = getPageUrl() + '?event=' + eventId;
+                document.getElementById('orgLink').value = url;
+                document.getElementById('orgShareCard').style.display = 'block';
+                genQR('orgQR', url);
+                listenSubmissions();
+            }
+        } catch(e) {}
+    }
+}
+function enterPar() { showPage('pagePar'); initGun(); }
+
+// ====== Organizer ======
+function orgAddAct() {
+    const n = document.getElementById('orgActName').value.trim();
+    if (!n) return;
+    if (orgActs.includes(n)) { alert('该活动已存在！'); return; }
+    orgActs.push(n);
+    document.getElementById('orgActName').value = '';
+    renderOrgActs();
+}
+function orgRmAct(i) { orgActs.splice(i,1); renderOrgActs(); }
+
+function renderOrgActs() {
+    const c = document.getElementById('orgActTags');
+    const n = document.getElementById('orgNoAct');
+    if (!orgActs.length) { c.innerHTML=''; n.style.display='block'; return; }
+    n.style.display = 'none';
+    c.innerHTML = orgActs.map((a,i) => `<div class="activity-tag">🎯 ${a} <span class="rm" onclick="orgRmAct(${i})">✕</span></div>`).join('');
+}
+
+function orgCreate() {
+    const date = document.getElementById('orgDate').value;
+    const title = document.getElementById('orgTitle').value.trim();
+    const content = document.getElementById('orgContent').value.trim();
+    if (!date || !title) { alert('请填写日期和标题！'); return; }
+    if (!orgActs.length) { alert('请至少添加一个活动项目！'); return; }
+
+    orgInfo = { date, title, content };
+    eventId = genId();
+
+    // Save to Gun
+    gun.get('cvs').get(eventId).put({
+        basicInfo: JSON.stringify(orgInfo),
+        activities: JSON.stringify(orgActs),
+        createdAt: Date.now()
+    });
+
+    localStorage.setItem('cvs_evt', JSON.stringify({ eventId, basicInfo: orgInfo, activities: orgActs }));
+
+    const url = getPageUrl() + '?event=' + eventId;
+    document.getElementById('orgLink').value = url;
+    document.getElementById('orgShareCard').style.display = 'block';
+    genQR('orgQR', url);
+
+    document.getElementById('orgStatsInfo').classList.remove('hidden');
+    document.getElementById('orgSDate').textContent = date;
+    document.getElementById('orgSTitle').textContent = title;
+    document.getElementById('orgSContent').textContent = content || '无';
+
+    orgPersons = [];
+    submissions = {};
+    listenSubmissions();
+    alert('✅ 活动已发布！请将链接或二维码分享到班级群。');
+}
+
+function listenSubmissions() {
+    if (!gun || !eventId) return;
+    document.getElementById('orgSync').className = 'sync-badge on';
+
+    gun.get('cvs').get(eventId).get('subs').map().on(function(data, key) {
+        if (!data || !data.name) return;
+        // Gun might return duplicate or stale data, dedup by key
+        const existing = submissions[key];
+        const newData = {
+            name: data.name,
+            count: data.count || 1,
+            plate: data.plate || '',
+            activities: data.activities ? JSON.parse(data.activities) : []
+        };
+        // Only update if changed
+        if (!existing || JSON.stringify(existing) !== JSON.stringify(newData)) {
+            submissions[key] = newData;
+            rebuildOrgPersons();
+            renderStats();
+        }
+    });
+}
+
+function rebuildOrgPersons() {
+    orgPersons = Object.values(submissions).filter(p => p && p.name);
+}
+
+function orgReset() {
+    if (!confirm('确定重置？将清除当前活动及所有提交数据，开始新的统计。')) return;
+    if (gun && eventId) {
+        // Clear submissions in Gun
+        gun.get('cvs').get(eventId).get('subs').map().once(function(data, key) {
+            if (data) gun.get('cvs').get(eventId).get('subs').get(key).put(null);
+        });
+        gun.get('cvs').get(eventId).put(null);
+    }
+    eventId = null;
+    orgActs = [];
+    orgPersons = [];
+    orgInfo = {};
+    submissions = {};
+    localStorage.removeItem('cvs_evt');
+
+    document.getElementById('orgDate').value = '';
+    document.getElementById('orgTitle').value = '';
+    document.getElementById('orgContent').value = '';
+    document.getElementById('orgShareCard').style.display = 'none';
+    document.getElementById('orgStatsInfo').classList.add('hidden');
+    renderOrgActs();
+    renderStats();
+    document.getElementById('orgSync').className = 'sync-badge off';
+}
+
+// ====== Stats Rendering ======
+function renderStats() {
+    const tp = orgPersons.length;
+    const tc = orgPersons.reduce((s,p) => s + p.count, 0);
+    const plates = [...new Set(orgPersons.filter(p => p.plate).map(p => p.plate))];
+
+    document.getElementById('sTotal').textContent = tp;
+    document.getElementById('sCount').textContent = tc;
+    document.getElementById('sPlates').textContent = plates.length;
+
+    const ag = document.getElementById('sActGrid');
+    if (orgActs.length && tp) {
+        ag.innerHTML = '<div class="stats-grid">' + orgActs.map((a,i) => {
+            const ps = orgPersons.filter(p => p.activities[i]);
+            const pc = ps.reduce((s,p) => s+p.count,0);
+            const r = tp ? Math.round(ps.length/tp*100) : 0;
+            return `<div class="stat-card as"><div class="stat-number">${ps.length}</div><div class="stat-label">"${a}" 参加</div><div style="font-size:.8em;color:#888;margin-top:2px">参访${pc}人 | 参与率${r}%</div></div>`;
+        }).join('') + '</div>';
+    } else ag.innerHTML = '';
+
+    const ad = document.getElementById('sActDetail');
+    if (!orgActs.length || !tp) {
+        ad.innerHTML = '<div class="empty-state">创建活动后，参与者提交的数据将自动显示</div>';
+    } else {
+        let h = '';
+        orgActs.forEach((a,ai) => {
+            const yes = orgPersons.filter(p => p.activities[ai]);
+            const no = orgPersons.filter(p => !p.activities[ai]);
+            h += `<h3 style="color:#555;margin:10px 0 6px;font-size:.95em">🎯 ${a}</h3><div style="display:flex;gap:12px;flex-wrap:wrap">`;
+            h += `<div style="flex:1;min-width:200px"><h4 style="color:#11998e;margin-bottom:5px;font-size:.86em">✅ 参加（${yes.length}人登记，${yes.reduce((s,p)=>s+p.count,0)}人参访）</h4>`;
+            if (yes.length) { h+='<table><thead><tr><th>姓名</th><th>人数</th><th>车牌号</th></tr></thead><tbody>'; yes.forEach(p=>h+=`<tr><td>${p.name}</td><td>${p.count}</td><td>${p.plate||'—'}</td></tr>`); h+='</tbody></table>'; } else h+='<p style="color:#aaa;font-size:.84em">无</p>';
+            h += `</div><div style="flex:1;min-width:200px"><h4 style="color:#f45c43;margin-bottom:5px;font-size:.86em">❌ 未参加（${no.length}人登记，${no.reduce((s,p)=>s+p.count,0)}人参访）</h4>`;
+            if (no.length) { h+='<table><thead><tr><th>姓名</th><th>人数</th><th>车牌号</th></tr></thead><tbody>'; no.forEach(p=>h+=`<tr><td>${p.name}</td><td>${p.count}</td><td>${p.plate||'—'}</td></tr>`); h+='</tbody></table>'; } else h+='<p style="color:#aaa;font-size:.84em">无</p>';
+            h += '</div></div>';
+        });
+        ad.innerHTML = h;
+    }
+
+    const ps = document.getElementById('sPlateSum');
+    if (plates.length) {
+        let ph = '<table><thead><tr><th>序号</th><th>车牌号</th><th>对应人员</th><th>人数</th></tr></thead><tbody>';
+        plates.forEach((pl,i) => { const pp=orgPersons.filter(p=>p.plate===pl); ph+=`<tr><td>${i+1}</td><td><strong>${pl}</strong></td><td>${pp.map(p=>p.name).join('、')}</td><td>${pp.reduce((s,p)=>s+p.count,0)}</td></tr>`; });
+        ps.innerHTML = ph + '</tbody></table>';
+    } else ps.innerHTML = '<div class="empty-state">暂无车牌数据</div>';
+
+    const fth = document.getElementById('ftHead');
+    const ftb = document.getElementById('ftBody');
+    const fte = document.getElementById('ftEmpty');
+    if (!tp) { fth.innerHTML=''; ftb.innerHTML=''; fte.style.display='block'; return; }
+    fte.style.display='none';
+    let th='<tr><th>序号</th><th>姓名</th><th>人数</th><th>车牌号</th>';
+    orgActs.forEach(a=>th+=`<th>${a}</th>`);
+    fth.innerHTML=th+'</tr>';
+    let tb='';
+    orgPersons.forEach((p,i)=>{
+        tb+=`<tr><td>${i+1}</td><td>${p.name}</td><td>${p.count}</td><td>${p.plate||'—'}</td>`;
+        orgActs.forEach((a,ai)=>tb+=`<td>${p.activities[ai]?'<span class="hy">✅ 是</span>':'<span class="hn">❌ 否</span>'}</td>`);
+        tb+='</tr>';
+    });
+    tb+=`<tr style="background:#f5f3ff;font-weight:600"><td colspan="2">合计</td><td>${tc}</td><td>${plates.length}辆</td>`;
+    orgActs.forEach((a,ai)=>{const y=orgPersons.filter(p=>p.activities[ai]);tb+=`<td>${y.length}人/${y.reduce((s,p)=>s+p.count,0)}人</td>`;});
+    ftb.innerHTML=tb+'</tr>';
+}
+
+function exportCSV() {
+    if (!orgPersons.length) { alert('暂无数据！'); return; }
+    let csv='\uFEFF';
+    csv+=`参访日期,${orgInfo.date}\n参访标题,${orgInfo.title}\n参访内容,${orgInfo.content}\n\n`;
+    csv+='序号,姓名,人数,车牌号,'+orgActs.join(',')+'\n';
+    orgPersons.forEach((p,i)=>{csv+=`${i+1},${p.name},${p.count},${p.plate||''},`+orgActs.map((a,ai)=>p.activities[ai]?'是':'否').join(',')+'\n';});
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`参访统计_${orgInfo.date||'export'}.csv`;a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ====== Participant ======
+function parJoin() {
+    const link = document.getElementById('parLink').value.trim();
+    if (!link) { alert('请粘贴活动链接！'); return; }
+    let eid = '';
+    try { eid = new URL(link).searchParams.get('event'); } catch(e) { eid = link; }
+    if (!eid) { alert('无效的活动链接！'); return; }
+
+    initGun();
+
+    // Load event from Gun
+    gun.get('cvs').get(eid).once(function(data) {
+        if (!data || !data.basicInfo) { alert('❌ 未找到该活动！请检查链接。'); return; }
+
+        const info = JSON.parse(data.basicInfo);
+        const acts = JSON.parse(data.activities);
+        parData = { eventId: eid, info, acts };
+        eventId = eid;
+
+        document.getElementById('parDate').textContent = info.date;
+        document.getElementById('parTitle').textContent = info.title;
+        document.getElementById('parContent').textContent = info.content || '无';
+        document.getElementById('parActs').textContent = acts.join('、');
+        document.getElementById('parInfo').classList.remove('hidden');
+
+        const fc = document.getElementById('parFillCard');
+        fc.style.opacity = '1'; fc.style.pointerEvents = 'auto';
+
+        document.getElementById('parActChecks').innerHTML = acts.map((a,i) =>
+            `<label class="activity-check-item"><input type="checkbox" id="parA${i}" checked> ${a}</label>`
+        ).join('');
+
+        document.getElementById('parOkCard').style.display = 'none';
+
+        // Check if already submitted
+        parMyKey = localStorage.getItem('cvs_par_' + eid);
+        if (parMyKey) {
+            gun.get('cvs').get(eid).get('subs').get(parMyKey).once(function(sub) {
+                if (sub && sub.name) {
+                    document.getElementById('parName').value = sub.name;
+                    document.getElementById('parCount').value = sub.count || 1;
+                    document.getElementById('parPlate').value = sub.plate || '';
+                    const sa = sub.activities ? JSON.parse(sub.activities) : [];
+                    sa.forEach((v,i) => { const cb = document.getElementById('parA'+i); if(cb) cb.checked = v; });
+                }
+            });
+        }
+    });
+}
+
+function parSubmit() {
+    if (!parData) { alert('请先加入活动！'); return; }
+    const name = document.getElementById('parName').value.trim();
+    const count = parseInt(document.getElementById('parCount').value) || 1;
+    const plate = document.getElementById('parPlate').value.trim();
+    if (!name) { alert('请输入您的姓名！'); return; }
+
+    const acts = parData.acts.map((a,i) => { const cb = document.getElementById('parA'+i); return cb ? cb.checked : false; });
+
+    const subData = {
+        name: name,
+        count: Math.max(1, count),
+        plate: plate,
+        activities: JSON.stringify(acts),
+        updatedAt: Date.now()
+    };
+
+    if (!parMyKey) parMyKey = genId();
+
+    gun.get('cvs').get(parData.eventId).get('subs').get(parMyKey).put(subData);
+    localStorage.setItem('cvs_par_' + parData.eventId, parMyKey);
+
+    document.getElementById('parOkCard').style.display = 'block';
+    document.getElementById('parOkCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+function parModify() {
+    document.getElementById('parOkCard').style.display = 'none';
+    document.getElementById('parFillCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ====== Init ======
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlEvt = urlParams.get('event');
+
+    if (urlEvt) {
+        initGun();
+        enterPar();
+        document.getElementById('parLink').value = window.location.href;
+        setTimeout(() => parJoin(), 500);
+    }
+});
+</script>
+</body>
+</html>
