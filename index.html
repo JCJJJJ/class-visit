@@ -75,7 +75,6 @@ tr:hover{background:#f5f3ff}
 <div class="card"><div class="loading"><div class="spinner"></div><p>加载中...</p></div></div>
 </div>
 
-<!-- Setup API Key (only organizer sees this) -->
 <div id="pgSetup">
 <div class="card">
 <h2 style="color:#333;margin-bottom:12px">⚙️ 组织者首次设置</h2>
@@ -98,7 +97,6 @@ tr:hover{background:#f5f3ff}
 </div>
 </div>
 
-<!-- Create Event -->
 <div id="pgCreate" style="display:none">
 <div class="card">
 <h2 style="color:#333;margin-bottom:12px">📝 创建参访活动</h2>
@@ -120,7 +118,6 @@ tr:hover{background:#f5f3ff}
 </div>
 </div>
 
-<!-- Event Page -->
 <div id="pgEvent" style="display:none">
 <div class="card">
 <div class="ibox" id="eInfo"></div>
@@ -188,16 +185,19 @@ var binId = null;
 var apiKey = null;
 var myActs = [];
 
-// URL hash format: #binId|apiKey  (apiKey embedded so participants don't need to set up)
-function parseHash() {
-    var h = location.hash.slice(1);
-    if (!h) return { binId: null, apiKey: null };
-    var parts = h.split('|');
-    return { binId: parts[0], apiKey: parts[1] || null };
+// Use query params (?e=binId&k=apiKey) instead of hash (#)
+// because WeChat/QQ strip # fragments from shared URLs
+function getUrlParams() {
+    var params = new URLSearchParams(location.search);
+    return {
+        e: params.get('e'),  // event bin ID
+        k: params.get('k')   // API key
+    };
 }
 
-function makeHash(bid, key) {
-    return '#' + bid + '|' + key;
+function makeShareUrl(bid, key) {
+    var base = location.href.split('?')[0].split('#')[0];
+    return base + '?e=' + encodeURIComponent(bid) + '&k=' + encodeURIComponent(key);
 }
 
 // ---- Page switching ----
@@ -278,7 +278,8 @@ function doCreate() {
     }).then(function(r) {
         binId = r.metadata.id;
         localStorage.setItem('cvs_owner_' + binId, '1');
-        location.hash = makeHash(binId, apiKey);
+        // Update URL with query params
+        history.replaceState(null, '', makeShareUrl(binId, apiKey));
         showEventPage();
         btn.disabled = false; btn.textContent = '🚀 创建活动';
     }).catch(function(e) {
@@ -329,6 +330,7 @@ function refreshData() {
 // ---- Show event page ----
 function showEventPage() {
     showPg(2); renderEventInfo(); renderAll();
+    // Owner defaults to stats tab, participants default to fill tab
     if (localStorage.getItem('cvs_owner_' + binId)) switchTab('stats'); else switchTab('fill');
 }
 
@@ -336,8 +338,7 @@ function renderEventInfo() {
     if (!D) return;
     var h = '<p><b>📅 日期：</b>' + D.d + '</p><p><b>📌 标题：</b>' + D.t + '</p><p><b>📝 内容：</b>' + (D.c || '无') + '</p><p><b>🎯 活动项目：</b>' + (D.a || []).join('、') + '</p>';
     document.getElementById('eInfo').innerHTML = h;
-    var baseUrl = location.href.split('#')[0];
-    document.getElementById('shareLink').value = baseUrl + makeHash(binId, apiKey);
+    document.getElementById('shareLink').value = makeShareUrl(binId, apiKey);
 }
 
 // ---- Tab switching ----
@@ -479,26 +480,20 @@ function doExport() {
 
 // ---- Init ----
 apiKey = localStorage.getItem('cvs_apikey');
-var parsed = parseHash();
-if (parsed.binId) binId = parsed.binId;
-if (parsed.apiKey) {
-    apiKey = parsed.apiKey;  // Auto-extract from URL
+var params = getUrlParams();
+if (params.e) binId = params.e;
+if (params.k) {
+    apiKey = params.k;  // Auto-extract API key from URL
     localStorage.setItem('cvs_apikey', apiKey);
 }
 
 if (!apiKey) {
-    showPg(0); // Show setup
+    showPg(0); // Show setup page
 } else if (binId) {
-    loadData(showEventPage);
+    loadData(showEventPage); // Load event and show fill/stats
 } else {
-    showPg(1); // Show create
+    showPg(1); // Show create page
 }
-
-window.addEventListener('hashchange', function() {
-    var p = parseHash();
-    if (p.binId && p.binId !== binId) { binId = p.binId; if (p.apiKey) { apiKey = p.apiKey; localStorage.setItem('cvs_apikey', apiKey); } loadData(showEventPage); }
-    else if (!p.binId) { binId = null; D = null; showPg(apiKey ? 1 : 0); }
-});
 </script>
 </body>
 </html>
